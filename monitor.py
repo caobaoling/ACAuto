@@ -36,7 +36,7 @@ COL_W = {
 HEADER = (
     f"{'时间':^{COL_W['time']}} | "
     f"{'全局CPU%':^{COL_W['cpu']}} | "
-    f"{'全局内存%':^{COL_W['mem']}} | "
+    f"{'全局内存MB':^{COL_W['mem']}} | "
     f"{'GPU使用%':^{COL_W['gpu_use']}} | "
     f"{'GPU内存%':^{COL_W['gpu_mem']}} | "
     f"{'进程名':^{COL_W['proc']}} | "
@@ -144,7 +144,7 @@ def main():
     while time.time() - start < DURATION:
         ts        = datetime.now().strftime("%H:%M:%S")
         cpu_total = psutil.cpu_percent(interval=None)
-        mem_total = psutil.virtual_memory().percent
+        mem_total = round(psutil.virtual_memory().used / 1024 / 1024)
         gpu_use, gpu_mem = get_gpu()
         procs     = get_target_procs()
 
@@ -195,7 +195,7 @@ def main():
 
     g = summary["__global__"]
     print(f"  全局 CPU     均值={avg(g['cpu'])}%  峰值={peak(g['cpu'])}%")
-    print(f"  全局 内存    均值={avg(g['mem'])}%  峰值={peak(g['mem'])}%")
+    print(f"  全局 内存    均值={avg(g['mem'])}MB  峰值={peak(g['mem'])}MB")
     if g["gpu_use"]:
         print(f"  GPU  使用率  均值={avg(g['gpu_use'])}%  峰值={peak(g['gpu_use'])}%")
         print(f"  GPU  显存    均值={avg(g['gpu_mem'])}%  峰值={peak(g['gpu_mem'])}%")
