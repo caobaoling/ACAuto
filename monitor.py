@@ -70,7 +70,7 @@ def get_target_procs():
             name = proc.info['name'] or ""
             for keyword in TARGET_NAMES:
                 if keyword.lower() in name.lower():
-                    cpu = proc.info['cpu_percent'] or 0.0
+                    cpu = round((proc.info['cpu_percent'] or 0.0) / psutil.cpu_count(logical=True), 1)
                     mem = round((proc.info['memory_info'].rss) / 1024 / 1024, 1)
                     if keyword not in matched:
                         matched[keyword] = [0.0, 0.0, 0, name]
@@ -114,7 +114,7 @@ def main():
     cpu_logical  = psutil.cpu_count(logical=True)
     cpu_physical = psutil.cpu_count(logical=False)
     print(f"\n开始监控，持续 {DURATION} 秒，每 {INTERVAL} 秒采样一次")
-    print(f"CPU：{cpu_physical} 物理核心 / {cpu_logical} 逻辑核心（进程CPU% 基于单核，÷{cpu_logical} 得全局占比）")
+    print(f"CPU：{cpu_physical} 物理核心 / {cpu_logical} 逻辑核心（进程CPU% 已换算为全局占比）")
     print(f"目标进程：{TARGET_NAMES}\n")
     print(SEP)
     print(HEADER)
