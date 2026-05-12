@@ -17,7 +17,7 @@ SAVE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 
 # ── 配置 ──────────────────────────────────────────────────
 DURATION       = 60    # 总采集时长（秒）
-INTERVAL       = 5     # 采集间隔（秒）
+INTERVAL       = 1     # 采集间隔（秒）
 TARGET_NAMES   = ["ACTalk", "ManyCam"]  # 进程名关键词（模糊匹配）
 # 注：任务管理器显示"51TalkStudyCenter"，实际进程文件名为 ACTalk.exe
 # ──────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ def main():
                 summary[proc_name]["mem"].append(p_mem)
 
         print(SEP)
-        time.sleep(INTERVAL)
+        # interval=1 采样本身已阻塞1秒，无需额外 sleep
 
     # ── 汇总统计 ──────────────────────────────────────────
     print("\n\n========== 汇总统计（均值 / 峰值）==========\n")
