@@ -6,10 +6,14 @@
 """
 
 import time
+import csv
+import os
 import psutil
 import GPUtil
 from datetime import datetime
 from collections import defaultdict
+
+SAVE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 
 # ── 配置 ──────────────────────────────────────────────────
 DURATION       = 60    # 总采集时长（秒）
@@ -121,9 +125,16 @@ def main():
             pass
     time.sleep(1)
 
+    # 准备 CSV 文件
+    os.makedirs(SAVE_DIR, exist_ok=True)
+    run_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    csv_detail_path  = os.path.join(SAVE_DIR, f"monitor_{run_ts}_detail.csv")
+    csv_summary_path = os.path.join(SAVE_DIR, f"monitor_{run_ts}_summary.csv")
+
+    detail_rows = []   # 明细数据（每次采样）
+
     # 用于汇总统计
     summary = defaultdict(lambda: {"cpu": [], "mem": [], "gpu_use": [], "gpu_mem": []})
-    all_rows = []
 
     start = time.time()
     while time.time() - start < DURATION:
@@ -140,7 +151,7 @@ def main():
             summary["__global__"]["gpu_use"].append(gpu_use)
             summary["__global__"]["gpu_mem"].append(gpu_mem)
 
-        # 打印每个目标进程一行
+        # 打印每个目标进程一行，同步写入明细数据
         first = True
         for (proc_name, p_cpu, p_mem) in procs:
             if first:
@@ -149,7 +160,18 @@ def main():
             else:
                 row = fmt_row("", "", "", "", "", proc_name, p_cpu, p_mem)
             print(row)
-            all_rows.append(row)
+
+            # 记录明细行（CSV）
+            detail_rows.append({
+                "时间":      ts,
+                "全局CPU%":  cpu_total,
+                "全局内存%": mem_total,
+                "GPU使用%":  gpu_use if gpu_use is not None else "",
+                "GPU内存%":  gpu_mem if gpu_mem is not None else "",
+                "进程名":    proc_name,
+                "进程CPU%":  p_cpu,
+                "进程内存MB": p_mem,
+            })
 
             # 记录进程汇总
             if p_cpu != "N/A":
@@ -184,6 +206,33 @@ def main():
         print(f"    CPU  均值={avg(data['cpu'])}%  峰值={peak(data['cpu'])}%")
         print(f"    内存 均值={avg(data['mem'])}MB 峰值={peak(data['mem'])}MB")
 
+    # ── 保存明细 CSV ──────────────────────────────────────────
+    fieldnames = ["时间", "全局CPU%", "全局内存%", "GPU使用%", "GPU内存%", "进程名", "进程CPU%", "进程内存MB"]
+    with open(csv_detail_path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(detail_rows)
+
+    # ── 保存汇总 CSV ──────────────────────────────────────────
+    summary_rows = []
+    g = summary["__global__"]
+    summary_rows.append({"指标": "全局CPU%",  "均值": avg(g["cpu"]),     "峰值": peak(g["cpu"])})
+    summary_rows.append({"指标": "全局内存%", "均值": avg(g["mem"]),     "峰值": peak(g["mem"])})
+    summary_rows.append({"指标": "GPU使用%",  "均值": avg(g["gpu_use"]), "峰值": peak(g["gpu_use"])})
+    summary_rows.append({"指标": "GPU内存%",  "均值": avg(g["gpu_mem"]), "峰值": peak(g["gpu_mem"])})
+    for name, data in summary.items():
+        if name == "__global__":
+            continue
+        summary_rows.append({"指标": f"{name} CPU%",  "均值": avg(data["cpu"]), "峰值": peak(data["cpu"])})
+        summary_rows.append({"指标": f"{name} 内存MB", "均值": avg(data["mem"]), "峰值": peak(data["mem"])})
+
+    with open(csv_summary_path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=["指标", "均值", "峰值"])
+        writer.writeheader()
+        writer.writerows(summary_rows)
+
+    print(f"\n明细数据：{csv_detail_path}")
+    print(f"汇总数据：{csv_summary_path}")
     print("\n监控结束。")
 
 
