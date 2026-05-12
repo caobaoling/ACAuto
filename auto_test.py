@@ -12,7 +12,7 @@ from PIL import Image
 from datetime import datetime
 
 # ── 配置 ──────────────────────────────────────────────────
-SAVE_DIR = r"D:\ACAuto\results"
+SAVE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 POLL_INTERVAL = 3          # 轮询间隔（秒）
 TIMEOUT = 600              # 最大等待时长（秒，10分钟）
 CONFIDENCE = 0.6           # OCR文字匹配置信度阈值
