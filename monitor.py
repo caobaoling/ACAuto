@@ -111,7 +111,10 @@ def fmt_row(ts, cpu, mem, gpu_use, gpu_mem, proc, p_cpu, p_mem):
 
 
 def main():
+    cpu_logical  = psutil.cpu_count(logical=True)
+    cpu_physical = psutil.cpu_count(logical=False)
     print(f"\n开始监控，持续 {DURATION} 秒，每 {INTERVAL} 秒采样一次")
+    print(f"CPU：{cpu_physical} 物理核心 / {cpu_logical} 逻辑核心（进程CPU% 基于单核，÷{cpu_logical} 得全局占比）")
     print(f"目标进程：{TARGET_NAMES}\n")
     print(SEP)
     print(HEADER)
