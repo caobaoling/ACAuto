@@ -18,7 +18,8 @@ SAVE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 # ── 配置 ──────────────────────────────────────────────────
 DURATION       = 60    # 总采集时长（秒）
 INTERVAL       = 5     # 采集间隔（秒）
-TARGET_NAMES   = ["51TalkStudyCenter", "ManyCam"]  # 进程名关键词（模糊匹配）
+TARGET_NAMES   = ["ACTalk", "ManyCam"]  # 进程名关键词（模糊匹配）
+# 注：任务管理器显示"51TalkStudyCenter"，实际进程文件名为 ACTalk.exe
 # ──────────────────────────────────────────────────────────
 
 COL_W = {
@@ -89,7 +90,7 @@ def get_target_procs():
     for keyword in TARGET_NAMES:
         if keyword not in found_keywords:
             if keyword != "ManyCam":
-                result.append((f"{keyword} [未运行]", "N/A", "N/A"))
+                result.append(("51TalkStudyCenter (ACTalk) [未运行]", "N/A", "N/A"))
 
     return result
 
