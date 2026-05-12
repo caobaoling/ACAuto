@@ -58,27 +58,43 @@ def get_gpu():
     return None, None
 
 
-def get_target_procs():
+def find_target_procs():
     """
-    遍历进程，找出名称包含目标关键词的进程。
-    返回 list of (display_name, cpu%, mem_mb)
+    扫描进程列表，返回匹配目标关键词的 {keyword: [proc, ...]} 字典。
+    用于初始化持久进程对象，调用后需预热 cpu_percent。
     """
-    matched = {}  # display_name -> (cpu_sum, mem_sum, count)
-
-    for proc in psutil.process_iter(['name', 'cpu_percent', 'memory_info']):
+    found = {kw: [] for kw in TARGET_NAMES}
+    for proc in psutil.process_iter(['name']):
         try:
             name = proc.info['name'] or ""
             for keyword in TARGET_NAMES:
                 if keyword.lower() in name.lower():
-                    cpu = round(proc.cpu_percent(interval=1) or 0.0, 1)
-                    mem = round((proc.info['memory_info'].rss) / 1024 / 1024, 1)
-                    if keyword not in matched:
-                        matched[keyword] = [0.0, 0.0, 0, name]
-                    matched[keyword][0] += cpu
-                    matched[keyword][1] += mem
-                    matched[keyword][2] += 1
+                    found[keyword].append(proc)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
+    return found
+
+
+def get_target_procs(tracked: dict):
+    """
+    从持久进程对象中采集 CPU%/内存，返回 list of (display_name, cpu%, mem_mb)。
+    tracked: {keyword: [proc, ...]}
+    """
+    matched = {}
+
+    for keyword, procs in tracked.items():
+        for proc in procs:
+            try:
+                cpu = round(proc.cpu_percent(interval=None) or 0.0, 1)
+                mem = round(proc.memory_info().rss / 1024 / 1024, 1)
+                name = proc.name()
+                if keyword not in matched:
+                    matched[keyword] = [0.0, 0.0, 0, name]
+                matched[keyword][0] += cpu
+                matched[keyword][1] += mem
+                matched[keyword][2] += 1
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
 
     result = []
     for keyword, (cpu_sum, mem_sum, count, raw_name) in matched.items():
@@ -120,13 +136,15 @@ def main():
     print(HEADER)
     print(SEP)
 
-    # 预热 cpu_percent（首次调用返回0，需丢弃）
+    # 扫描目标进程，预热 cpu_percent（首次调用返回0，需丢弃）
+    tracked = find_target_procs()
     psutil.cpu_percent(interval=None)
-    for proc in psutil.process_iter(['cpu_percent']):
-        try:
-            proc.cpu_percent(interval=None)
-        except Exception:
-            pass
+    for procs in tracked.values():
+        for proc in procs:
+            try:
+                proc.cpu_percent(interval=None)
+            except Exception:
+                pass
     time.sleep(1)
 
     # 准备 CSV 文件
@@ -146,7 +164,7 @@ def main():
         cpu_total = psutil.cpu_percent(interval=None)
         mem_total = round(psutil.virtual_memory().used / 1024 / 1024)
         gpu_use, gpu_mem = get_gpu()
-        procs     = get_target_procs()
+        procs     = get_target_procs(tracked)
 
         # 记录全局汇总
         summary["__global__"]["cpu"].append(cpu_total)
@@ -183,7 +201,7 @@ def main():
                 summary[proc_name]["mem"].append(p_mem)
 
         print(SEP)
-        # interval=1 采样本身已阻塞1秒，无需额外 sleep
+        time.sleep(INTERVAL)
 
     # ── 汇总统计 ──────────────────────────────────────────
     print("\n\n========== 汇总统计（均值 / 峰值）==========\n")
