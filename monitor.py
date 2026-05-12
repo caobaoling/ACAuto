@@ -80,11 +80,12 @@ def get_target_procs():
         display = raw_name if count == 1 else f"{keyword}(*{count})"
         result.append((display, round(cpu_sum, 1), round(mem_sum, 1)))
 
-    # 补充未找到的目标（显示 N/A）
+    # 51TalkStudyCenter 未找到时显示提示行；ManyCam 未找到则静默跳过
     found_keywords = set(matched.keys())
     for keyword in TARGET_NAMES:
         if keyword not in found_keywords:
-            result.append((f"{keyword} [未运行]", "N/A", "N/A"))
+            if keyword != "ManyCam":
+                result.append((f"{keyword} [未运行]", "N/A", "N/A"))
 
     return result
 
